@@ -6,67 +6,123 @@
 struct Carro
 {
     char nome[50];
-    int preco;
-    int potencia;
-    int quilometragem;
+    double preco;
+    int potencia; // Limitada de 1 a 10
+    double quilometragem;
 };
 
-void encontrarMelhorCarro(struct Carro carros[], int n, int maxPreco)
+void encontrarMelhorCarro(struct Carro carros[], int n, double maxPreco)
 {
-    int dp[n + 1][maxPreco + 1];
-    int selecionados[n];
+    int maxPrecoInt = (int)maxPreco;
+    double ***dp = malloc((n + 1) * sizeof(double **));
+    int ***selecionados = malloc((n + 1) * sizeof(int **));
 
     for (int i = 0; i <= n; i++)
     {
-        for (int j = 0; j <= maxPreco; j++)
+        dp[i] = malloc((n + 1) * sizeof(double *));
+        selecionados[i] = malloc((n + 1) * sizeof(int *));
+        for (int j = 0; j <= n; j++)
         {
-            dp[i][j] = 0;
+            dp[i][j] = malloc((maxPrecoInt + 1) * sizeof(double));
+            selecionados[i][j] = malloc((maxPrecoInt + 1) * sizeof(int));
+        }
+    }
+
+    for (int i = 0; i <= n; i++)
+    {
+        for (int j = 0; j <= n; j++)
+        {
+            for (int k = 0; k <= maxPrecoInt; k++)
+            {
+                dp[i][j][k] = 0.0;
+                selecionados[i][j][k] = 0;
+            }
         }
     }
 
     for (int i = 1; i <= n; i++)
     {
-        for (int j = 1; j <= maxPreco; j++)
+        for (int j = 1; j <= n; j++)
         {
-            if (carros[i - 1].preco <= j)
+            for (int k = 1; k <= maxPrecoInt; k++)
             {
-                int escolherCarro = carros[i - 1].potencia + dp[i - 1][j - carros[i - 1].preco];
-                int naoEscolherCarro = dp[i - 1][j];
-
-                if (escolherCarro > naoEscolherCarro)
+                if (carros[i - 1].preco <= k)
                 {
-                    dp[i][j] = escolherCarro;
-                    selecionados[i] = i - 1; // Marca o Ìndice do carro como selecionado
+                    double escolherCarro = carros[i - 1].potencia + dp[i - 1][j - 1][k - (int)(carros[i - 1].preco)];
+                    double naoEscolherCarro = dp[i - 1][j][k];
+
+                    if (escolherCarro > naoEscolherCarro)
+                    {
+                        dp[i][j][k] = escolherCarro;
+                        selecionados[i][j][k] = 1; // Marca o carro como selecionado
+                    }
+                    else
+                    {
+                        dp[i][j][k] = naoEscolherCarro;
+                        selecionados[i][j][k] = 0; // N√£o selecionado
+                    }
                 }
                 else
                 {
-                    dp[i][j] = naoEscolherCarro;
-                    selecionados[i] = selecionados[i - 1]; // MantÈm o carro selecionado anteriormente
+                    dp[i][j][k] = dp[i - 1][j][k];
+                    selecionados[i][j][k] = 0; // N√£o selecionado
                 }
-            }
-            else
-            {
-                dp[i][j] = dp[i - 1][j];
-                selecionados[i] = selecionados[i - 1]; // MantÈm o carro selecionado anteriormente
             }
         }
     }
 
-    int potenciaMaxima = dp[n][maxPreco];
-    int j = maxPreco;
-    int valorTotal = 0;
-
-    printf("Carros selecionados:\n");
+    double melhorPotencia = 0.0;
+    int melhorKilometragem = 0;
+    int melhorPreco = 0;
 
     for (int i = n; i >= 1; i--)
     {
-        if (dp[i][j] != dp[i - 1][j])
+        for (int j = 1; j <= n; j++)
         {
-            printf("%s (PotÍncia: %d, Quilometragem: %d, PreÁo: %d)\n", carros[i - 1].nome, carros[i - 1].potencia, carros[i - 1].quilometragem, carros[i - 1].preco);
-            valorTotal += carros[i - 1].preco;
-            j -= carros[i - 1].preco;
+            for (int k = maxPrecoInt; k >= 1; k--)
+            {
+                if (selecionados[i][j][k])
+                {
+                    double potenciaAtual = dp[i][j][k];
+                    int quilometragemAtual = j;
+                    int precoAtual = k;
+
+                    if (potenciaAtual > melhorPotencia ||
+                        (potenciaAtual == melhorPotencia && quilometragemAtual < melhorKilometragem) ||
+                        (potenciaAtual == melhorPotencia && quilometragemAtual == melhorKilometragem && precoAtual < melhorPreco))
+                    {
+                        melhorPotencia = potenciaAtual;
+                        melhorKilometragem = quilometragemAtual;
+                        melhorPreco = precoAtual;
+                    }
+                }
+            }
         }
     }
+
+    printf("Melhor combina√ß√£o:\n");
+    for (int i = n, j = melhorKilometragem, k = melhorPreco; i >= 1; i--)
+    {
+        if (selecionados[i][j][k])
+        {
+            printf("%s (Pot√™ncia: %d, Quilometragem: %.2lf, Pre√ßo: %.2lf)\n", carros[i - 1].nome, carros[i - 1].potencia, carros[i - 1].quilometragem, carros[i - 1].preco);
+            j -= 1;
+            k -= (int)carros[i - 1].preco;
+        }
+    }
+
+    for (int i = 0; i <= n; i++)
+    {
+        for (int j = 0; j <= n; j++)
+        {
+            free(dp[i][j]);
+            free(selecionados[i][j]);
+        }
+        free(dp[i]);
+        free(selecionados[i]);
+    }
+    free(dp);
+    free(selecionados);
 }
 
 int main()
@@ -74,7 +130,7 @@ int main()
     setlocale(LC_ALL, "Portuguese_Brazil");
 
     int n;
-    printf("Digite o n˙mero de carros: ");
+    printf("Digite o n√∫mero de carros: ");
     scanf("%d", &n);
 
     struct Carro carros[n];
@@ -83,17 +139,22 @@ int main()
     {
         printf("Digite o nome do carro %d: ", i + 1);
         scanf("%s", carros[i].nome);
-        printf("Digite o preÁo do carro %d: ", i + 1);
-        scanf("%d", &carros[i].preco);
-        printf("Digite a potÍncia do carro %d: ", i + 1);
-        scanf("%d", &carros[i].potencia);
+        printf("Digite o pre√ßo do carro %d: ", i + 1);
+        scanf("%lf", &carros[i].preco);
+
+        // Solicita a pot√™ncia, limitando-a entre 1 e 10
+        do {
+            printf("Digite a pot√™ncia do carro %d (entre 1 e 10): ", i + 1);
+            scanf("%d", &carros[i].potencia);
+        } while (carros[i].potencia < 1 || carros[i].potencia > 10);
+
         printf("Digite a quilometragem do carro %d: ", i + 1);
-        scanf("%d", &carros[i].quilometragem);
+        scanf("%lf", &carros[i].quilometragem);
     }
 
-    int maxPreco;
-    printf("Digite o valor m·ximo de preÁo: ");
-    scanf("%d", &maxPreco);
+    double maxPreco;
+    printf("Digite o valor m√°ximo de pre√ßo: ");
+    scanf("%lf", &maxPreco);
 
     encontrarMelhorCarro(carros, n, maxPreco);
 
